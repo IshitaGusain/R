@@ -1,0 +1,84 @@
+---
+title: "DA-4"
+author: "Ishita Gusain"
+date: "2025-03-13"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+
+# 1. Simulate Data
+set.seed(123)
+data <- as.data.frame(matrix(rnorm(300 * 5, mean = 50, sd = 10), ncol = 5))
+colnames(data) <- c("X1", "X2", "X3", "X4", "X5")
+
+# Introduce 10 artificial outliers
+data[1:10, ] <- data[1:10, ] + rnorm(10 * 5, mean = 30, sd = 5)
+
+# 2. Proximity-Based Outlier Detection (Euclidean Distance)
+distance_matrix <- dist(data, method = "euclidean")
+distance_values <- as.matrix(distance_matrix)
+max_distances <- apply(distance_values, 1, max)
+outliers_distance <- which(max_distances > quantile(max_distances, 0.95))
+
+# Visualization of Distance-Based Outliers
+plot(max_distances, main = "Distance-Based Outlier Detection", col = "blue", pch = 19)
+points(outliers_distance, max_distances[outliers_distance], col = "red", pch = 19)
+```
+
+```{r}
+# 3. Mahalanobis Distance Approach
+mahalanobis_distances <- mahalanobis(data, colMeans(data), cov(data))
+threshold <- qchisq(0.95, df = 5)
+outliers_mahalanobis <- which(mahalanobis_distances > threshold)
+
+# Visualization of Mahalanobis Outliers
+boxplot(mahalanobis_distances, main = "Mahalanobis Distance Outlier Detection")
+abline(h = threshold, col = "red", lwd = 2)
+```
+
+```{r}
+# 4. k-Nearest Neighbors (k-NN) Outlier Detection
+k <- 5
+knn_distances <- apply(as.matrix(dist(data)), 1, function(row) mean(sort(row)[2:(k+1)]))
+k_threshold <- quantile(knn_distances, 0.95)
+outliers_knn <- which(knn_distances > k_threshold)
+
+# Visualization of k-NN Outliers
+plot(knn_distances, main = "k-NN Outlier Detection", col = "blue", pch = 19)
+points(outliers_knn, knn_distances[outliers_knn], col = "red", pch = 19)
+```
+
+```{r}
+# 5. Summary of Outliers Detected
+cat("Outliers detected by Distance-Based Method:", length(outliers_distance), "\n")
+cat("Outliers detected by Mahalanobis Distance:", length(outliers_mahalanobis), "\n")
+cat("Outliers detected by k-NN Method:", length(outliers_knn), "\n")
+```
+
+```{r}
+# 6. Scatter Plot Visualization of Outliers
+ggplot(data, aes(X1, X2)) +
+  geom_point(color = "blue") +
+  geom_point(data = data[outliers_mahalanobis, ], aes(X1, X2), color = "red", size = 3) +
+  ggtitle("Outlier Detection Visualization") +
+  theme_minimal()
+```
+
+```{r}
+# 7. Interpretation of Results
+cat("Interpretation of Outlier Detection Methods:\n")
+cat("1. Distance-Based Method: This method identified", length(outliers_distance), "outliers by measuring extreme distances. It works well but can be sensitive to data scaling.\n")
+cat("2. Mahalanobis Distance: Detected", length(outliers_mahalanobis), "outliers. This method considers correlation between variables, making it more reliable for multivariate outlier detection.\n")
+cat("3. k-NN Method: Found", length(outliers_knn), "outliers based on average distance to nearest neighbors. It is effective but may require careful selection of k.\n")
+
+
+```
+Overall, the Mahalanobis method is often more robust for high-dimensional data, while k-NN is useful when clusters are present. Distance-based methods are simple but sensitive to scale.
